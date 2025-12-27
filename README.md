@@ -127,13 +127,10 @@ python live_trade_metaapi.py
 
 ## 📖 Documentation
 
-- [Training Guide](COLAB_TRAINING_GUIDE.md) - Step-by-step training instructions
+- [Colab Training Guide](COLAB_TRAINING_GUIDE.md) - Step-by-step cloud training instructions
 - [Deployment Guide](DEPLOYMENT_GUIDE.md) - Production deployment setup
 - [Free Deployment](FREE_DEPLOYMENT.md) - Deploy on free cloud services
-- [Quick Start](QUICKSTART.md) - Fast setup guide
-- [Commands](COMMANDS.md) - CLI reference
-- [Google Colab Setup](GOOGLE_COLAB_SETUP.md) - Cloud training configuration
-- [Dreamer Implementation](DREAMER_IMPLEMENTATION_GUIDE.md) - World model RL details
+- [Dreamer Implementation](DREAMER_IMPLEMENTATION_GUIDE.md) - World model RL technical details
 
 ## 🔬 Algorithms
 
