@@ -693,7 +693,7 @@ Special thanks to the quantitative trading and RL research communities for shari
 
 - **Issues**: [GitHub Issues](https://github.com/zero-was-here/tradingbot/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/zero-was-here/tradingbot/discussions)
-- **Email**: Create an issue for bugs/features
+- **Email**: jebariayman8@gmail.com
 
 ---
 
