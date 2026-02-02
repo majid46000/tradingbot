@@ -13,12 +13,14 @@ This script automatically downloads:
 All FREE data sources, no API keys needed for basics.
 """
 
-import pandas as pd
-import numpy as np
-import yfinance as yf
-from datetime import datetime, timedelta
+import importlib.util
 import logging
 import os
+from datetime import datetime, timedelta, timezone
+
+import numpy as np
+import pandas as pd
+import yfinance as yf
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -127,6 +129,82 @@ def align_to_hourly(df_daily, df_hourly_reference):
 
     return df_aligned.reset_index()
 
+def fetch_mt5_xauusd_m5(data_dir, years=2, symbol="XAUUSD", chunk_days=30):
+    """
+    Fetch XAUUSD M5 data from a local MetaTrader 5 terminal.
+
+    Requires MT5 terminal to be installed and logged in (or env vars set).
+    Outputs data/xauusd_m5.csv with time/open/high/low/close/tick_volume.
+    """
+    if importlib.util.find_spec("MetaTrader5") is None:
+        logger.warning("⚠️ MetaTrader5 package not installed. Skipping MT5 data fetch.")
+        return None
+
+    import MetaTrader5 as mt5
+
+    init_args = {}
+    mt5_path = os.getenv("MT5_PATH")
+    if mt5_path:
+        init_args["path"] = mt5_path
+
+    login = os.getenv("MT5_LOGIN")
+    password = os.getenv("MT5_PASSWORD")
+    server = os.getenv("MT5_SERVER")
+    if login and password and server:
+        init_args.update({
+            "login": int(login),
+            "password": password,
+            "server": server,
+        })
+
+    if not mt5.initialize(**init_args):
+        logger.error(f"❌ MT5 initialize failed: {mt5.last_error()}")
+        return None
+
+    try:
+        if not mt5.symbol_select(symbol, True):
+            logger.error(f"❌ Failed to select symbol {symbol}: {mt5.last_error()}")
+            return None
+
+        end_time = datetime.now(timezone.utc)
+        start_time = end_time - timedelta(days=365 * years)
+        logger.info(f"📥 Fetching MT5 {symbol} M5 from {start_time} to {end_time}...")
+
+        all_frames = []
+        chunk_start = start_time
+        while chunk_start < end_time:
+            chunk_end = min(chunk_start + timedelta(days=chunk_days), end_time)
+            rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_M5, chunk_start, chunk_end)
+            if rates is None or len(rates) == 0:
+                logger.warning(f"⚠️ No data returned for {chunk_start} → {chunk_end}")
+            else:
+                df_chunk = pd.DataFrame(rates)
+                df_chunk["time"] = pd.to_datetime(df_chunk["time"], unit="s", utc=True)
+                all_frames.append(df_chunk)
+            chunk_start = chunk_end
+
+        if not all_frames:
+            logger.error("❌ No MT5 data returned for XAUUSD M5.")
+            return None
+
+        df = pd.concat(all_frames, ignore_index=True)
+        df = df.drop_duplicates("time").sort_values("time").reset_index(drop=True)
+        if "real_volume" in df.columns:
+            df = df.rename(columns={"real_volume": "volume"})
+
+        cols = ["time", "open", "high", "low", "close"]
+        for optional in ["tick_volume", "volume", "spread"]:
+            if optional in df.columns:
+                cols.append(optional)
+        df = df[cols]
+
+        output_path = os.path.join(data_dir, "xauusd_m5.csv")
+        df.to_csv(output_path, index=False)
+        logger.info(f"✅ MT5 XAUUSD M5 saved to {output_path} ({len(df)} bars)")
+        return df
+    finally:
+        mt5.shutdown()
+
 
 def main():
     """Main function to fetch all data"""
@@ -183,6 +261,12 @@ def main():
         gld.to_csv(f'{DATA_DIR}/gld_etf_daily.csv', index=False)
         datasets['GLD'] = gld
 
+    # 7. XAUUSD M5 (2 years) from MT5 if available
+    mt5_years = int(os.getenv("MT5_YEARS", "2"))
+    xauusd_m5 = fetch_mt5_xauusd_m5(DATA_DIR, years=mt5_years)
+    if xauusd_m5 is not None:
+        datasets['XAUUSD_M5'] = xauusd_m5
+
     # Summary
     logger.info("\n" + "="*70)
     logger.info("📊 DOWNLOAD SUMMARY")
@@ -191,7 +275,7 @@ def main():
     for name, df in datasets.items():
         logger.info(f"✅ {name:15} {len(df):6,} bars → data/{name.lower()}_daily.csv")
 
-    logger.info(f"\n✅ Successfully downloaded {len(datasets)}/{6} datasets")
+    logger.info(f"\n✅ Successfully downloaded {len(datasets)}/{7} datasets")
 
     # Next steps
     logger.info("\n" + "="*70)
@@ -199,16 +283,18 @@ def main():
     logger.info("="*70)
     logger.info("""
 1. ✅ These files are saved in data/ directory
-2. ⏳ Waiting for YOU to provide:
-   - M5 XAUUSD data (from MT5)
+2. ✅ If MT5 is installed and logged in, this script will fetch:
+   - XAUUSD M5 for the last 2 years (configurable via MT5_YEARS)
+
+3. ⏳ Still required (manual export or additional scripts):
    - M15 XAUUSD data (from MT5)
 
-3. 🔜 I will create:
+4. 🔜 I will create:
    - Economic calendar JSON
    - Data integration pipeline
    - Updated God Mode features with ALL data
 
-4. 🚀 Then we train the ULTIMATE model!
+5. 🚀 Then we train the ULTIMATE model!
     """)
 
     return datasets
