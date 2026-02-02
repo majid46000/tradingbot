@@ -234,19 +234,36 @@ git clone https://github.com/zero-was-here/tradingbot.git
 cd tradingbot
 ```
 
-#### 2. Create Virtual Environment
-```bash
-# Create environment
-python3 -m venv .
+#### 2. Windows One-Click Installer (Recommended)
+If you are on Windows, you can install everything with a single command:
 
-# Activate it
-source bin/activate  # Mac/Linux
-# OR
-.\Scripts\activate   # Windows
+```powershell
+.\setup_windows.ps1
 ```
 
-#### 3. Install Dependencies
+Or double-click `setup_windows.bat` in File Explorer.
+
+If PowerShell blocks scripts, run:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\setup_windows.ps1
+```
+
+#### 3. Create Virtual Environment (Manual)
 ```bash
+# Create environment
+python -m venv .venv
+
+# Activate it
+source .venv/bin/activate  # Mac/Linux
+# OR
+.\.venv\Scripts\activate   # Windows
+```
+
+#### 4. Install Dependencies
+```bash
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
